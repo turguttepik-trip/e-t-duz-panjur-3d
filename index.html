@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Düz Panjur 3D Onay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: formal and exact, a drawing handed to a customer for sign-off
+   IDEA: an A3 technical drawing sheet, with its title block (antet) and parts list
+   PICTURE: the live 3D model, dimensioned like a drawing, filling the sheet
+   COLOUR and TYPE: white paper, black ink, cobalt title strip; Space Grotesk + Inter
+   LAYOUT: title strip, model, view controls, then antet-style dimensions, parts and approval */
+:root{--bg:#fff;--ink:#0b0d12;--muted:#4a5168;--pale:#eef2ff;--line:#d3d9ec;--accent:#1240e0;--strip:#1240e0;--stripInk:#fff;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#0a0d18;--ink:#e9ecf5;--muted:#a3abc4;--pale:#131a30;--line:#273152;--accent:#7f9cff;--strip:#1a3ab8;color-scheme:dark}}
+:root[data-theme=light]{--bg:#fff;--ink:#0b0d12;--muted:#4a5168;--pale:#eef2ff;--line:#d3d9ec;--accent:#1240e0;--strip:#1240e0;color-scheme:light}
+:root[data-theme=dark]{--bg:#0a0d18;--ink:#e9ecf5;--muted:#a3abc4;--pale:#131a30;--line:#273152;--accent:#7f9cff;--strip:#1a3ab8;color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:clip}
+h1,h2,.num,.strip b{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
+.strip{background:var(--strip);color:var(--stripInk);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding:10px max(5vw,16px);font-size:14px}
+.strip b{font-weight:600;font-size:15px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 max(5vw,16px)}
+.head{padding:22px 0 14px}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 8px;font-weight:600;text-wrap:balance}
+.lead{margin:0;color:var(--muted);max-width:62ch}
+.sheet{display:grid;grid-template-columns:minmax(0,1fr);gap:0;border:1.5px solid var(--ink)}
+@media(min-width:960px){.sheet{grid-template-columns:minmax(0,1fr) 360px}.side{border-left:1.5px solid var(--ink)}}
+.stage{position:relative;height:min(66svh,640px);min-height:360px;background:var(--pale);touch-action:none;overflow:hidden}
+@media(min-width:960px){.stage{height:640px}}
+.stage canvas{display:block;width:100%!important;height:100%!important}
+.lbls{position:absolute;inset:0;pointer-events:none}
+.dl{font:600 13px/1 "Space Grotesk",Inter,sans-serif;color:var(--accent);background:var(--bg);border:1px solid var(--accent);padding:4px 7px;border-radius:3px;white-space:nowrap;display:inline-block}
+.dl.in{transform:translateX(calc(50% + 6px))}
+.veil{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:15px;transition:opacity .4s}
+.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:13px;padding:8px 12px;border-radius:999px;white-space:nowrap;transition:opacity .5s;pointer-events:none}
+.chip{position:absolute;left:12px;top:12px;right:12px;max-width:max-content;background:var(--bg);border:1.5px solid var(--accent);padding:8px 12px;font-size:14px;display:none}
+.chip b{display:block;color:var(--accent)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;padding:12px;border-top:1.5px solid var(--ink);background:var(--bg)}
+.seg{display:flex;border:1.5px solid var(--ink);flex:1 1 260px}
+.seg button{flex:1;border:0;border-left:1.5px solid var(--ink)}
+.seg button:first-child{border-left:0}
+button{font:500 15px/1 Inter,system-ui,sans-serif;min-height:44px;padding:0 14px;background:var(--bg);color:var(--ink);border:1.5px solid var(--ink);cursor:pointer;border-radius:0}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tog{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 300px}
+.tog button{flex:1 1 auto}
+.side{display:flex;flex-direction:column}
+.cell{padding:16px;border-top:1.5px solid var(--ink)}
+@media(min-width:960px){.side .cell:first-child{border-top:0}}
+h2{font-size:15px;font-weight:600;margin:0 0 10px;color:var(--muted)}
+.dims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dims div{border:1px solid var(--line);padding:10px}
+.num{font-size:clamp(24px,6vw,30px);font-weight:600;line-height:1;display:block;white-space:nowrap}
+.dims small{color:var(--muted);font-size:13px}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:13px;border-bottom:1.5px solid var(--ink);padding:6px 4px}
+td{border-bottom:1px solid var(--line);padding:9px 4px;vertical-align:top}
+td.r,th.r{text-align:right;white-space:nowrap}
+td:nth-child(2){white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr.on td{background:var(--pale);color:var(--accent);font-weight:600}
+.ok{background:var(--pale)}
+.msg{border:1px dashed var(--accent);padding:10px;font-size:14px;margin:0 0 10px;background:var(--bg)}
+.ok button{width:100%;background:var(--accent);color:#fff;border-color:var(--accent)}
+.foot{padding:16px 0 32px;font-size:13px;color:var(--muted)}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--muted)}}
+@media(prefers-reduced-motion:reduce){.veil,.hint{transition:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div class="strip"><span><b>E-T · Düz panjur</b> &nbsp;montaj modeli</span><span>27.11.2026 · birim mm</span></div>
+<div class="wrap">
+  <header class="head">
+    <h1>Düz panjur montajı, 1380 × 1540 × 840 mm</h1>
+    <p class="lead">Modeli parmağınızla çevirip inceleyin; bir parçaya dokunursanız adı ve ölçüsü görünür. Uygunsa aşağıdan onay mesajını gönderin.</p>
+  </header>
+  <div class="sheet">
+    <div>
+      <div class="stage" id="view">
+        <div class="veil" id="veil">3D model yükleniyor…</div>
+        <div class="chip" id="chip"></div>
+        <div class="hint" id="hint">Tek parmak: çevir · İki parmak: yakınlaştır, kaydır</div>
+      </div>
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Görünüm">
+          <button id="v-iso" aria-pressed="true">3D</button>
+          <button id="v-front" aria-pressed="false">Ön</button>
+          <button id="v-side" aria-pressed="false">Yan</button>
+          <button id="v-top" aria-pressed="false">Üst</button>
+        </div>
+        <div class="tog">
+          <button id="t-dim" aria-pressed="true">Ölçüler</button>
+          <button id="t-exp" aria-pressed="false">Parçalara ayır</button>
+          <button id="t-top" aria-pressed="false">Üst kapağı gizle</button>
+        </div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="cell">
+        <h2>Dış ölçüler</h2>
+        <div class="dims">
+          <div><span class="num">1380</span><small>Genişlik</small></div>
+          <div><span class="num">1540</span><small>Yükseklik</small></div>
+          <div><span class="num">840</span><small>Derinlik</small></div>
+        </div>
+        <p class="note">Ölçüler mm, cıvata başları hariç. Ön yüz, 1380 mm genişliğindeki panjurlu yüzdür; arka ve alt açıktır.</p>
+      </div>
+      <div class="cell">
+        <h2>Parça listesi</h2>
+        <table>
+          <thead><tr><th>Parça</th><th>Ölçü (mm)</th><th class="r">Adet</th></tr></thead>
+          <tbody id="parts"></tbody>
+        </table>
+      </div>
+      <div class="cell ok">
+        <h2>Onay</h2>
+        <p class="msg" id="msg">E-T düz panjur montaj tasarımını (1380 × 1540 × 840 mm, 27.11.2026) inceledim ve onaylıyorum.</p>
+        <button id="copy">Onay mesajını kopyala</button>
+        <p class="note" id="copied">Kopyaladığınız mesajı bu linki size gönderen kişiye iletin. Değişiklik isterseniz bunu da aynı yoldan yazabilirsiniz.</p>
+      </div>
+    </aside>
+  </div>
+  <p class="foot">Model, SolidWorks montaj dosyasından (E_T_PANJUR_FİNAL_MONTAJ) doğrudan oluşturulmuştur; renkler temsilîdir.</p>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {CSS2DRenderer, CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+{
+const $ = id => document.getElementById(id);
+const PARTS = [
+  {id:'front', node:'NAUO3',  name:'Ön panjur paneli',      size:'1302 × 1500', qty:1, dir:[0,0,1]},
+  {id:'right', node:'NAUO1',  name:'Sağ yan panjur paneli', size:'800 × 1500',  qty:1, dir:[1,0,0]},
+  {id:'left',  node:'NAUO2',  name:'Sol yan panjur paneli', size:'800 × 1500',  qty:1, dir:[-1,0,0]},
+  {id:'top',   node:'NAUO32', name:'Üst kapak',             size:'1302 × 840',  qty:1, dir:[0,1,0]},
+  {id:'bolt',  node:null,     name:'Paslanmaz cıvata, DIN 7984', size:'M8 × 16', qty:28, dir:null}
+];
+$('parts').innerHTML = PARTS.map(p => `<tr data-id="${p.id}"><td>${p.name}</td><td>${p.size}</td><td class="r">${p.qty}</td></tr>`).join('');
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+view.prepend(renderer.domElement);
+const labels = new CSS2DRenderer();
+labels.domElement.className = 'lbls';
+view.appendChild(labels.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(2.5, 5, 3.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left:-2, right:2, top:2, bottom:-2, near:1, far:12});
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({opacity:0.16}));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 60);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 0.7;
+controls.maxDistance = 10;
+controls.maxPolarAngle = Math.PI * 0.53;
+controls.target.set(0, 0.77, 0);
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const dimMat = new THREE.LineBasicMaterial({color:css('--accent') || '#1240e0', depthTest:false, transparent:true});
+const edgeMat = new THREE.LineBasicMaterial({color:0x1b1f2a, transparent:true, opacity:0.28});
+const boltMat = new THREE.MeshStandardMaterial({color:0x9aa0a6, metalness:0.85, roughness:0.32});
+const recolor = () => dimMat.color.set(css('--accent') || '#1240e0');
+new MutationObserver(recolor).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', recolor);
+
+const root = new THREE.Group();
+scene.add(root);
+const nodes = {};      // part id -> [{obj, base, host}]
+const pickables = [], edgeQueue = [];
+const partOf = id => PARTS.find(p => p.id === id);
+const dims = new THREE.Group();
+let explode = 0, explodeTarget = 0;
+
+function dim(a, b, off, text, inner){
+  const pa = a.clone().add(off), pb = b.clone().add(off);
+  const along = pb.clone().sub(pa).normalize(), o = off.clone().normalize();
+  const t = along.clone().add(o).multiplyScalar(0.025);
+  const ext = o.clone().multiplyScalar(0.04);
+  const pts = [a.clone().add(o.clone().multiplyScalar(0.02)), pa.clone().add(ext),
+               b.clone().add(o.clone().multiplyScalar(0.02)), pb.clone().add(ext),
+               pa, pb, pa.clone().sub(t), pa.clone().add(t), pb.clone().sub(t), pb.clone().add(t)];
+  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), dimMat);
+  line.renderOrder = 10;
+  dims.add(line);
+  const el = document.createElement('div'), tag = document.createElement('span');
+  tag.className = 'dl' + (inner ? ' in' : '');
+  tag.textContent = text;
+  el.append(tag);
+  const lab = new CSS2DObject(el);
+  lab.position.copy(pa).lerp(pb, 0.5);
+  dims.add(lab);
+}
+
+function onModel(gltf){
+  const model = gltf.scene;
+  root.add(model);
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  const asm = model.children[0] || model;
+  for (const p of PARTS) nodes[p.id] = [];
+  asm.traverse(o => {
+    if (!o.isMesh) return;
+    const nodeName = (o.name && o.name.startsWith('NAUO') ? o.name : o.parent.name);
+    const holder = o.name && o.name.startsWith('NAUO') ? o : o.parent;
+    let part = PARTS.find(p => p.node === nodeName);
+    o.castShadow = true;
+    o.receiveShadow = true;
+    if (part) {
+      o.material = new THREE.MeshStandardMaterial({color:part.id === 'top' ? 0xc2c6c9 : 0xccd0d0, metalness:0.3, roughness:0.5, side:THREE.DoubleSide});
+      edgeQueue.push(o);
+      box.expandByObject(o);
+    } else {
+      part = partOf('bolt');
+      o.material = boltMat;
+    }
+    o.userData.part = part.id;
+    pickables.push(o);
+    if (!nodes[part.id].some(n => n.obj === holder)) nodes[part.id].push({obj:holder, base:holder.position.clone(), host:part.id});
+  });
+  // cıvatalar bağlı oldukları parçayla birlikte hareket eder
+  for (const n of nodes.bolt) {
+    const c = new THREE.Box3().setFromObject(n.obj).getCenter(new THREE.Vector3());
+    n.host = c.y > box.max.y - 0.05 ? 'top' : c.z > box.max.z - 0.07 ? 'front' : (c.x > (box.min.x + box.max.x) / 2 ? 'right' : 'left');
+  }
+  const ctr = box.getCenter(new THREE.Vector3());
+  root.position.set(-ctr.x, -box.min.y, -ctr.z);
+  const lo = box.min, hi = box.max, y0 = lo.y + 0.002, g = 0.2;
+  dim(new THREE.Vector3(lo.x, y0, hi.z), new THREE.Vector3(hi.x, y0, hi.z), new THREE.Vector3(0, 0, g), '1380');
+  dim(new THREE.Vector3(lo.x, lo.y, hi.z), new THREE.Vector3(lo.x, hi.y, hi.z), new THREE.Vector3(-g, 0, 0), '1540', true);
+  dim(new THREE.Vector3(hi.x, y0, hi.z), new THREE.Vector3(hi.x, y0, lo.z), new THREE.Vector3(g, 0, 0), '840');
+  root.add(dims);
+  $('veil').style.opacity = 0;
+  setTimeout(() => $('veil').remove(), 450);
+  setView('iso', true);
+  // kenar çizgileri model göründükten sonra, her seferinde bir parça eklenir
+  const addEdges = () => {
+    const o = edgeQueue.shift();
+    if (!o) return;
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 28), edgeMat);
+    edges.raycast = () => {};
+    o.add(edges);
+    setTimeout(addEdges, 30);
+  };
+  setTimeout(addEdges, 200);
+}
+// model, GLB baytlarının base64 metni olarak gelir
+const fail = () => { $('veil').textContent = 'Model yüklenemedi. Sayfayı yenileyip tekrar deneyin.'; };
+(async () => {
+  const res = await fetch('panjur_model.txt');
+  if (!res.ok) throw new Error(res.status);
+  const total = +res.headers.get('content-length') || 5883744;
+  const reader = res.body.getReader(), parts = [];
+  let got = 0;
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    parts.push(value);
+    got += value.length;
+    $('veil').textContent = `3D model yükleniyor… %${Math.min(99, Math.round(got / total * 100))}`;
+  }
+  $('veil').textContent = 'Model hazırlanıyor…';
+  const all = new Uint8Array(got);
+  let at = 0;
+  for (const p of parts) { all.set(p, at); at += p.length; }
+  const s = atob(new TextDecoder().decode(all).trim());
+  const bin = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) bin[i] = s.charCodeAt(i);
+  new GLTFLoader().parse(bin.buffer, '', onModel, fail);
+})().catch(fail);
+
+// görünümler
+const VIEWS = {iso:[1.05, 0.62, 1.3], front:[0, 0.04, 1], side:[1, 0.04, 0], top:[0, 1, 0.002]};
+let anim = null;
+// modeli ve ölçü çizgilerini kapsayan kutuyu, verilen bakış yönünden ekrana sığdıran uzaklık
+function fitDistance(dir){
+  dir = (dir || camera.position.clone().sub(controls.target)).clone().normalize();
+  const vt = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), ht = vt * camera.aspect;
+  const up = Math.abs(dir.y) > 0.98 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = up.clone().cross(dir).normalize(), up2 = dir.clone().cross(right);
+  let need = 0;
+  for (const x of [-0.92, 0.92]) for (const y of [-0.8, 0.8]) for (const z of [-0.46, 0.66]) {
+    const c = new THREE.Vector3(x, y, z);
+    const depth = c.dot(dir);
+    need = Math.max(need, depth + Math.abs(c.dot(right)) / ht, depth + Math.abs(c.dot(up2)) / vt);
+  }
+  return need * 1.06;
+}
+function setView(name, instant){
+  for (const k in VIEWS) $('v-' + k).setAttribute('aria-pressed', k === name);
+  const target = new THREE.Vector3(0, 0.77, 0);
+  const dir = new THREE.Vector3(...VIEWS[name]).normalize();
+  const pos = dir.clone().multiplyScalar(fitDistance(dir) * (explodeTarget ? 1.35 : 1)).add(target);
+  if (instant || reduce) { camera.position.copy(pos); controls.target.copy(target); anim = null; return; }
+  anim = {t0:performance.now(), p0:camera.position.clone(), q0:controls.target.clone(), p1:pos, q1:target};
+}
+for (const k in VIEWS) $('v-' + k).addEventListener('click', () => setView(k));
+
+function toggle(id, fn){
+  const b = $(id);
+  b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); fn(on); });
+}
+let dimOn = true;
+toggle('t-dim', on => { dimOn = on; dims.visible = on && !explodeTarget; });
+toggle('t-exp', on => {
+  explodeTarget = on ? 1 : 0;
+  if (reduce) explode = explodeTarget;
+  dims.visible = dimOn && !on;
+  const tg = anim ? anim.q1.clone() : controls.target.clone();
+  const dir = (anim ? anim.p1 : camera.position).clone().sub(tg).normalize();
+  const pos = dir.clone().multiplyScalar(fitDistance(dir) * (on ? 1.35 : 1)).add(tg);
+  if (reduce) camera.position.copy(pos);
+  else anim = {t0:performance.now(), p0:camera.position.clone(), q0:tg.clone(), p1:pos, q1:tg};
+});
+toggle('t-top', on => { for (const n of nodes.top || []) n.obj.visible = !on; for (const n of nodes.bolt || []) if (n.host === 'top') n.obj.visible = !on; });
+
+// parça seçimi
+let selected = null;
+function select(id){
+  selected = id;
+  for (const m of pickables) if (m.material !== boltMat) { m.material.emissive.set(m.userData.part === id ? 0x1240e0 : 0x000000); m.material.emissiveIntensity = 0.45; }
+  boltMat.emissive.set(id === 'bolt' ? 0x1240e0 : 0x000000);
+  boltMat.emissiveIntensity = 0.8;
+  for (const tr of document.querySelectorAll('#parts tr')) tr.classList.toggle('on', tr.dataset.id === id);
+  const chip = $('chip'), p = partOf(id);
+  if (!p) { chip.style.display = 'none'; return; }
+  chip.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = p.name;
+  chip.append(b, `${p.size} mm · ${p.qty} adet`);
+  chip.style.display = 'block';
+}
+$('parts').addEventListener('click', e => { const tr = e.target.closest('tr'); if (tr) select(selected === tr.dataset.id ? null : tr.dataset.id); });
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; hideHint(); });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickables.filter(m => m.visible && m.parent.visible), false)[0];
+  select(hit ? hit.object.userData.part : null);
+});
+controls.addEventListener('start', () => { anim = null; for (const k in VIEWS) $('v-' + k).setAttribute('aria-pressed', false); });
+function hideHint(){ const h = $('hint'); if (h) { h.style.opacity = 0; setTimeout(() => h.remove(), 600); } }
+
+// onay mesajı
+$('copy').addEventListener('click', async () => {
+  const text = $('msg').textContent;
+  try { await navigator.clipboard.writeText(text); $('copy').textContent = 'Kopyalandı'; }
+  catch { const s = getSelection(), rg = document.createRange(); rg.selectNodeContents($('msg')); s.removeAllRanges(); s.addRange(rg); $('copy').textContent = 'Metin seçildi, kopyalayın'; }
+});
+
+const size = new ResizeObserver(() => {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false);
+  labels.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+});
+size.observe(view);
+
+const ease = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+const tmp = new THREE.Vector3();
+renderer.setAnimationLoop(now => {
+  if (anim) {
+    const t = Math.min(1, (now - anim.t0) / 700), k = ease(t);
+    camera.position.lerpVectors(anim.p0, anim.p1, k);
+    controls.target.lerpVectors(anim.q0, anim.q1, k);
+    if (t === 1) anim = null;
+  }
+  if (explode !== explodeTarget) {
+    explode += Math.sign(explodeTarget - explode) * 0.04;
+    if (Math.abs(explode - explodeTarget) < 0.04) explode = explodeTarget;
+    const k = ease(explode);
+    for (const id in nodes) for (const n of nodes[id]) {
+      const p = partOf(n.host);
+      if (!p || !p.dir) continue;
+      n.obj.position.copy(n.base).add(tmp.set(...p.dir).multiplyScalar(0.28 * k));
+    }
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  labels.render(scene, camera);
+});
+}
+</script>
+</body>
+</html>
